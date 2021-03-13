@@ -44,18 +44,17 @@ async def yeet(ctx):
 async def send_multireddit_mail():
     message_channel = bot.get_channel(812710676299644940)
     os.system('cd /home/schapin/Scripts/Reddit-Scraper/; bash mail_newsfeed_posts.sh')
-    mail_files = [
-        discord.File('/home/schapin/Scripts/Reddit-Scraper/.output/dev.html'),
-        discord.File('/home/schapin/Scripts/Reddit-Scraper/.output/3DPrinting.html'),
-        discord.File('/home/schapin/Scripts/Reddit-Scraper/.output/deals.html'),
-        discord.File('/home/schapin/Scripts/Reddit-Scraper/.output/memes.html'),
-        discord.File('/home/schapin/Scripts/Reddit-Scraper/.output/mindless.html'),
-        discord.File('/home/schapin/Scripts/Reddit-Scraper/.output/misc.html'),
-        discord.File('/home/schapin/Scripts/Reddit-Scraper/.output/news.html'),
-        discord.File('/home/schapin/Scripts/Reddit-Scraper/.output/pictures.html')
-    ]
-
-    await message_channel.send(files=mail_files)
+    #The files will appear in <...>/Reddit-Scraper/.output/ which is symlinked in the website directory for easy access.
+    output = """Reddit Newsfeed is now available at the following links:
+        https://www.samuelchapin.com/reddit/dev.html
+        https://www.samuelchapin.com/reddit/3DPrinting.html
+        https://www.samuelchapin.com/reddit/deals.html
+        https://www.samuelchapin.com/reddit/memes.html
+        https://www.samuelchapin.com/reddit/mindless.html
+        https://www.samuelchapin.com/reddit/misc.html
+        https://www.samuelchapin.com/reddit/news.html
+        https://www.samuelchapin.com/reddit/pictures.html"""
+    await message_channel.send(output)
 
 
 
