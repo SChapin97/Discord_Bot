@@ -7,20 +7,35 @@ from discord.ext import commands, tasks
 import datetime as dt
 import asyncio
 import requests
+import subprocess
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 OCTOPRINT_TOKEN = os.getenv('OCTOPRINT_TOKEN')
-octoprint_url = "http://192.168.1.106"
+OCTOPRINT_URL = os.getenv('OCTOPRINT_URL')
+PRINT_CHANNEL = os.getenv('PRINT_CHANNEL')
+HOME_COMMAND = os.getenv('HOME_COMMAND')
+HOME_CHANNEL = os.getenv('HOME_CHANNEL')
+ALAMO_COMMAND = os.getenv('ALAMO_COMMAND')
+ALAMO_CHANNEL = os.getenv('ALAMO_CHANNEL')
+NOTIFY_FILE = os.getenv('NOTIFY_FILE')
+NOTIFY_CHANNEL = os.getenv('NOTIFY_CHANNEL')
+SUBREDDIT_COMMAND = os.getenv('SUBREDDIT_COMMAND')
+SUBREDDIT_CHANNEL = os.getenv('SUBREDDIT_CHANNEL')
+MULTIREDDIT_COMMAND = os.getenv('MULTIREDDIT_COMMAND')
+MULTIREDDIT_CHANNEL = os.getenv('MULTIREDDIT_CHANNEL')
+
 headers  = {'Accept': 'application/json', 'x-api-key': OCTOPRINT_TOKEN}
 print_is_complete = True
 
-
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.members = True
-
 bot = commands.Bot(command_prefix='!', intents=intents)
+
+###################################
+#### Bot boilerplate functions ####
+###################################
 
 @bot.event
 async def on_ready():
@@ -32,11 +47,10 @@ async def on_ready():
     members = '\n - '.join([member.name for member in guild.members])
     print(f'Guild Members:\n - {members}')
 
-### Tests and helper functions
-@bot.command(name='yeet', help='get yeeted, son')
-async def yeet(ctx):
-    output = "yeetus"
-    await ctx.send(output)
+    send_subreddit_alert.start()
+    alert_print_complete.start()
+    read_notification_messages.start()
+    alamo_drafthouse_notifications.start()
 
 @bot.event
 async def on_error(event, *args, **kwargs):
@@ -47,53 +61,31 @@ async def on_error(event, *args, **kwargs):
             raise discord.DiscordException
 
 
+###########################
+#### Command functions ####
+###########################
 
-### Reddit functions
-@tasks.loop(hours=24)
-async def send_multireddit_mail():
-    message_channel = bot.get_channel(823210936311087105)
-    os.system('cd /home/schapin/Scripts/Reddit-Scraper/; bash mail_newsfeed_posts.sh')
-    #The files will appear in <...>/Reddit-Scraper/.output/ which is symlinked in the website directory for easy access.
-    output = """Reddit Newsfeed is now available at the following links:
-        https://www.samuelchapin.com/reddit/dev.html
-        https://www.samuelchapin.com/reddit/3DPrinting.html
-        https://www.samuelchapin.com/reddit/deals.html
-        https://www.samuelchapin.com/reddit/memes.html
-        https://www.samuelchapin.com/reddit/mindless.html
-        https://www.samuelchapin.com/reddit/misc.html
-        https://www.samuelchapin.com/reddit/news.html
-        https://www.samuelchapin.com/reddit/pictures.html"""
-    await message_channel.send(output)
+### More or less a check to see if the bot is online
+@bot.command(name='yeet', help='get yeeted, son')
+async def yeet(ctx):
+    output = "yeetus"
+    await ctx.send(output)
 
-@tasks.loop(seconds=60)
-async def send_subreddit_alert():
-    message_channel = bot.get_channel(824053467182006282)
-    output = os.popen('cd /home/schapin/Scripts/Reddit-Scraper/; python3 subreddit_watcher.py buildapcsales homelabsales').read()
+
+### On demand see who is on the home wifi
+@bot.command(name='home', help='Tells you who is connected to the home wifi')
+async def who_is_home(ctx):
+    message_channel = bot.get_channel(int(HOME_CHANNEL))
+    output = subprocess.check_output(HOME_COMMAND, shell=True, text=True)
     if output:
-        for item in output.split('<end_item>\n'):
-            if item.strip():
-                await message_channel.send(item)
+        await message_channel.send(output)
+    else:
+        await message_channel.send("No one is home.")
 
-
-@send_multireddit_mail.before_loop
-async def before_multireddit_mail():
-    await bot.wait_until_ready()
-    for _ in range(60*60*24):
-        if dt.datetime.now().hour == 6: #Send it out at 6AM
-            print('Time to send the mail out')
-            return
-        await asyncio.sleep(30)
-
-@send_subreddit_alert.before_loop
-async def before_subreddit_alert():
-    await bot.wait_until_ready()
-
-
-
-### Octoprint functions
+### Octoprint (3D printing software) status
 @bot.command(name='print', help='Get the status of the current print job from Octoprint.')
 async def print_status(ctx):
-    response = requests.get(octoprint_url + "/api/job", headers=headers)
+    response = requests.get(OCTOPRINT_URL + "/api/job", headers=headers)
 
     if response.status_code == 200:
         print_name = response.json().get("job").get("file").get("name")
@@ -114,11 +106,65 @@ Print Time: {time_used} hours''')
 
     await ctx.send(output)
 
+
+#####################################
+#### Looped, automated functions ####
+#####################################
+
+### Look for new alamo drafthouse movies
+
+@tasks.loop(hours=12)
+async def alamo_drafthouse_notifications():
+    message_channel = bot.get_channel(int(ALAMO_CHANNEL))
+    output = subprocess.check_output(ALAMO_COMMAND, shell=True, text=True)
+    if output:
+        await message_channel.send(output)
+
+@alamo_drafthouse_notifications.before_loop
+async def before_alamo_drafthouse_notifications():
+    await bot.wait_until_ready()
+
+
+### Read notification messages
+@tasks.loop(seconds=15)
+async def read_notification_messages():
+    message_channel = bot.get_channel(int(NOTIFY_CHANNEL))
+
+    with open(NOTIFY_FILE, 'r+') as file:
+        output = file.read()
+        if output:
+            await message_channel.send(output)
+            file.truncate(0)
+
+@read_notification_messages.before_loop
+async def before_read_notification_messages():
+    #Create messages file if it does not exist
+    if not os.path.exists(NOTIFY_FILE):
+        f = open(NOTIFY_FILE, "w")
+        f.close()
+
+    await bot.wait_until_ready()
+
+
+@tasks.loop(seconds=60)
+async def send_subreddit_alert():
+    message_channel = bot.get_channel(int(SUBREDDIT_CHANNEL))
+    output = os.popen(SUBREDDIT_COMMAND).read()
+    if output:
+        for item in output.split('<end_item>\n'):
+            if item.strip():
+                await message_channel.send(item)
+
+@send_subreddit_alert.before_loop
+async def before_subreddit_alert():
+    await bot.wait_until_ready()
+
+
 @tasks.loop(seconds=60)
 async def alert_print_complete():
-    message_channel = bot.get_channel(904148267074474024)
+    message_channel = bot.get_channel(int(PRINT_CHANNEL))
 
-    response = requests.get(octoprint_url + "/api/job", headers=headers)
+    response = requests.get(OCTOPRINT_URL + "/api/job", headers=headers)
     state = response.json().get("state")
     print_name = response.json().get("job").get("file").get("name")
 
@@ -144,8 +190,24 @@ async def alert_print_complete():
 async def before_alert_print_complete():
     await bot.wait_until_ready()
 
-send_multireddit_mail.start()
-send_subreddit_alert.start()
-alert_print_complete.start()
+
+#@tasks.loop(hours=24)
+#async def send_multireddit_mail():
+#    message_channel = bot.get_channel(int(MULTIREDDIT_CHANNEL))
+#    os.system(MULTIREDDIT_COMMAND)
+#    #The files will appear in <...>/Reddit-Scraper/.output/ which is symlinked in the website directory for easy access.
+#    output = \"\"\"Reddit Newsfeed is now available at the following links:"\"\"
+#    await message_channel.send(output)
+
+#@send_multireddit_mail.before_loop
+#async def before_multireddit_mail():
+#    await bot.wait_until_ready()
+#    for _ in range(60*60*24):
+#        if dt.datetime.now().hour == 6: #Send it out at 6AM
+#            print('Time to send the mail out')
+#            return
+#        await asyncio.sleep(30)
+
+
 
 bot.run(TOKEN)
