@@ -12,19 +12,19 @@ import subprocess
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
-OCTOPRINT_TOKEN = os.getenv('OCTOPRINT_TOKEN')
-OCTOPRINT_URL = os.getenv('OCTOPRINT_URL')
-PRINT_CHANNEL = os.getenv('PRINT_CHANNEL')
-HOME_COMMAND = os.getenv('HOME_COMMAND')
-HOME_CHANNEL = os.getenv('HOME_CHANNEL')
+#OCTOPRINT_TOKEN = os.getenv('OCTOPRINT_TOKEN')
+#OCTOPRINT_URL = os.getenv('OCTOPRINT_URL')
+#PRINT_CHANNEL = os.getenv('PRINT_CHANNEL')
+#HOME_COMMAND = os.getenv('HOME_COMMAND')
+#HOME_CHANNEL = os.getenv('HOME_CHANNEL')
 ALAMO_COMMAND = os.getenv('ALAMO_COMMAND')
 ALAMO_CHANNEL = os.getenv('ALAMO_CHANNEL')
 NOTIFY_FILE = os.getenv('NOTIFY_FILE')
 NOTIFY_CHANNEL = os.getenv('NOTIFY_CHANNEL')
 SUBREDDIT_COMMAND = os.getenv('SUBREDDIT_COMMAND')
 SUBREDDIT_CHANNEL = os.getenv('SUBREDDIT_CHANNEL')
-MULTIREDDIT_COMMAND = os.getenv('MULTIREDDIT_COMMAND')
-MULTIREDDIT_CHANNEL = os.getenv('MULTIREDDIT_CHANNEL')
+#MULTIREDDIT_COMMAND = os.getenv('MULTIREDDIT_COMMAND')
+#MULTIREDDIT_CHANNEL = os.getenv('MULTIREDDIT_CHANNEL')
 
 headers  = {'Accept': 'application/json', 'x-api-key': OCTOPRINT_TOKEN}
 print_is_complete = True
@@ -48,7 +48,7 @@ async def on_ready():
     print(f'Guild Members:\n - {members}')
 
     send_subreddit_alert.start()
-    alert_print_complete.start()
+#    alert_print_complete.start()
     read_notification_messages.start()
     alamo_drafthouse_notifications.start()
 
